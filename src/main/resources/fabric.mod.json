@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "cookiejar",
+  "version": "${version}",
+  "name": "CookieJar",
+  "description": "Developer tool to view and edit cookies",
+  "authors": ["Tis_awesomeness"],
+  "contact": {
+    "repo": "https://github.com/Tisawesomeness/CookieJar",
+    "issues": "https://github.com/Tisawesomeness/CookieJar/issues"
+  },
+  "license": "LGPL-3.0",
+  "icon": "assets/cookiejar/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.tisawesomeness.cookiejar.CookieJar"
+    ]
+  },
+  "mixins": [
+    "cookiejar.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": ">=1.20.5-alpha.24.5.b"
+  }
+}
