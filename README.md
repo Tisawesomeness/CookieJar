@@ -1,3 +1,5 @@
+# CookieJar
+
 This mod adds allows server developers to view, edit, and save the new cookies from snapshot [24w03a](https://www.minecraft.net/en-us/article/minecraft-snapshot-24w03a). Features include:
 
 - Add, remove, edit, and send cookies

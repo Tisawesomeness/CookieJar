@@ -421,7 +421,6 @@ public class CookieScreen extends Screen {
 
         public CookieListWidget(MinecraftClient client, int width, int height, int y, int itemHeight) {
             super(client, width, height, y, itemHeight);
-            setRenderBackground(false);
         }
 
         @Override
@@ -454,7 +453,7 @@ public class CookieScreen extends Screen {
         }
 
         @Override
-        protected int getScrollbarPositionX() {
+        protected int getScrollbarX() {
             return width - SCROLLER_WIDTH;
         }
 
