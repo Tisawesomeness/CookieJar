@@ -18,9 +18,7 @@ public final class CookieUtil {
      */
     public static NbtCompound toNbt(Map<Identifier, byte[]> cookies) {
         NbtCompound compoundNbt = new NbtCompound();
-        cookies.forEach((key, data) -> {
-            compoundNbt.putByteArray(key.toString(), data);
-        });
+        cookies.forEach((key, data) -> compoundNbt.putByteArray(key.toString(), data));
         return compoundNbt;
     }
 

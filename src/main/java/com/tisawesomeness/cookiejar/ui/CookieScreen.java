@@ -40,6 +40,9 @@ public class CookieScreen extends Screen {
     private static final int KEY_WIDTH = 180;
     private static final int IMPORT_METHOD_WIDTH = 80;
 
+    private static final Identifier CROSS_BUTTON = Identifier.ofVanilla("widget/cross_button");
+    private static final Identifier CROSS_BUTTON_HIGHLIGHTED = Identifier.ofVanilla("widget/cross_button_highlighted");
+
     private final Screen parent;
     // reference to the same cookie map used in the network handler
     private final Map<Identifier, byte[]> cookies;
@@ -208,7 +211,7 @@ public class CookieScreen extends Screen {
                 PADDING + TEXTURE_SIZE + PADDING,
                 TEXTURE_SIZE,
                 TEXTURE_SIZE,
-                new ButtonTextures(new Identifier("widget/cross_button"), new Identifier("widget/cross_button_highlighted")),
+                new ButtonTextures(CROSS_BUTTON, CROSS_BUTTON_HIGHLIGHTED),
                 button -> clear(),
                 Text.translatable("gui.cookiejar.cookie_editor.clear")
         );
@@ -476,7 +479,7 @@ public class CookieScreen extends Screen {
 
                 deleteButton = new TexturedButtonWidget(
                         PADDING, 0, TEXTURE_SIZE, TEXTURE_SIZE,
-                        new ButtonTextures(new Identifier("widget/cross_button"), new Identifier("widget/cross_button_highlighted")),
+                        new ButtonTextures(CROSS_BUTTON, CROSS_BUTTON_HIGHLIGHTED),
                         button -> deleteCookie(),
                         Text.translatable("gui.cookiejar.cookie_editor.delete")
                 );
