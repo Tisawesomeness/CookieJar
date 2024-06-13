@@ -602,14 +602,14 @@ public class CookieScreen extends Screen {
         /** UTF-8 string, always valid */
         STRING(
                 Text.literal("S").withColor(0xFFFFFF),
-                Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.view_as_string")),
+                Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.string_data")),
                 payload -> new String(payload, StandardCharsets.UTF_8),
                 input -> Optional.of(input.getBytes(StandardCharsets.UTF_8))
         ),
         /** Raw bytes, edited in hex form */
         BYTE_ARRAY(
                 Text.literal("B").withColor(0xBB833A),
-                Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.view_as_bytes")),
+                Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.byte_data")),
                 Hex::encodeHexString,
                 input -> {
                     try {
