@@ -26,6 +26,7 @@
   "gui.cookiejar.cookie_editor.clear": "Clear",
   "gui.cookiejar.cookie_editor.delete": "Delete",
   "gui.cookiejar.cookie_editor.send": "Send",
+  "gui.cookiejar.cookie_editor.send_disabled": "Cannot send without multiplayer connection",
   "gui.cookiejar.cookie_editor.copy_payload": "Copy Payload",
   "gui.cookiejar.cookie_editor.string_data": "String Data",
   "gui.cookiejar.cookie_editor.byte_data": "Byte Data",

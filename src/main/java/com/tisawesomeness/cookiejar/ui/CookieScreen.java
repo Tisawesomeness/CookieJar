@@ -523,6 +523,11 @@ public class CookieScreen extends Screen {
 
             public void setSendButtonActive(boolean active) {
                 sendButton.active = active;
+                if (active) {
+                    sendButton.setTooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.send")));
+                } else {
+                    sendButton.setTooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.send_disabled")));
+                }
             }
 
             public void updatePayloadFromDataType() {
