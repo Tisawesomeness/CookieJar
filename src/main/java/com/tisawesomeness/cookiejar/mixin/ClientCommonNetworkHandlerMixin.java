@@ -2,8 +2,6 @@ package com.tisawesomeness.cookiejar.mixin;
 
 import com.tisawesomeness.cookiejar.CookieJar;
 import com.tisawesomeness.cookiejar.CookieJarConfig;
-import com.tisawesomeness.cookiejar.ui.CookieScreen;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientCommonNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.network.packet.s2c.common.CookieRequestS2CPacket;
@@ -19,9 +17,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientCommonNetworkHandler.class)
 public class ClientCommonNetworkHandlerMixin {
 
-    @Inject(method = "onStoreCookie", at = @At("TAIL"), cancellable = true)
+    @Inject(method = "onStoreCookie", at = @At("HEAD"), cancellable = true)
     private void onStoreCookie(StoreCookieS2CPacket packet, CallbackInfo ci) {
-        if (CookieJar.shouldIgnoreCookieRequest()) {
+        if (CookieJar.shouldIgnoreCookieStore()) {
             ci.cancel();
         } else {
             CookieJar.onStoreCookie(packet);

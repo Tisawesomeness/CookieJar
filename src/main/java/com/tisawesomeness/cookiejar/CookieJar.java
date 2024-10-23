@@ -97,7 +97,7 @@ public class CookieJar implements ClientModInitializer {
         }
     }
 
-    public static boolean shouldIgnoreCookieRequest() {
+    public static boolean shouldIgnoreCookieStore() {
         return CookieJarConfig.ignoreCookieStores == CookieJarConfig.IgnoreCondition.ALWAYS ||
                 (CookieJarConfig.ignoreCookieStores == CookieJarConfig.IgnoreCondition.WHILE_SCREEN_OPEN &&
                         MinecraftClient.getInstance().currentScreen instanceof CookieScreen);
