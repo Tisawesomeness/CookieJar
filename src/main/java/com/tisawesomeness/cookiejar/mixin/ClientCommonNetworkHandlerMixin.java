@@ -20,6 +20,7 @@ public class ClientCommonNetworkHandlerMixin {
     @Inject(method = "onStoreCookie", at = @At("HEAD"), cancellable = true)
     private void onStoreCookie(StoreCookieS2CPacket packet, CallbackInfo ci) {
         if (CookieJar.shouldIgnoreCookieStore()) {
+            CookieJar.LOGGER.trace("Ignored cookie store for {}", packet.key());
             ci.cancel();
         } else {
             CookieJar.onStoreCookie(packet);
@@ -29,6 +30,7 @@ public class ClientCommonNetworkHandlerMixin {
     @Inject(method = "onCookieRequest", at = @At("HEAD"), cancellable = true)
     private void onCookieRequest(CookieRequestS2CPacket packet, CallbackInfo ci) {
         if (CookieJarConfig.ignoreCookieRequests) {
+            CookieJar.LOGGER.trace("Ignored cookie request for {}", packet.key());
             ci.cancel();
         }
     }
@@ -36,6 +38,7 @@ public class ClientCommonNetworkHandlerMixin {
     @Inject(method = "onServerTransfer", at = @At("HEAD"), cancellable = true)
     private void onServerTransfer(ServerTransferS2CPacket packet, CallbackInfo ci) {
         if (CookieJar.shouldIgnoreTransfer(packet)) {
+            CookieJar.LOGGER.info("Ignored transfer to {}:{}", packet.host(), packet.port());
             ci.cancel();
         }
     }
