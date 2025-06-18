@@ -33,8 +33,8 @@ public final class CookieUtil {
         Map<Identifier, byte[]> cookies = new HashMap<>();
         nbt.getKeys().forEach(key -> {
             Identifier id = Identifier.tryParse(key);
-            if (id != null) {
-                nbt.getByteArray(key).ifPresent(bytes -> cookies.put(id, bytes));
+            if (id != null && nbt.contains(key, NbtCompound.BYTE_ARRAY_TYPE)) {
+                cookies.put(id, nbt.getByteArray(key));
             }
         });
         return cookies;
