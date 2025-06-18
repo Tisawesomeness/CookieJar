@@ -1,5 +1,6 @@
 package com.tisawesomeness.cookiejar;
 
+import com.tisawesomeness.cookiejar.mixin.StoreCookieS2CPacketAccessor;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.Identifier;
 
@@ -10,6 +11,7 @@ public final class CookieUtil {
     private CookieUtil() {}
 
     public static final long ONE_GIGABYTE = 1024 * 1024 * 1024;
+    public static final int MAX_COOKIE_SIZE = StoreCookieS2CPacketAccessor.getMaxCookieLength();
 
     /**
      * Serializes a cookie map to NBT.

@@ -42,6 +42,7 @@ public class TransferScreen extends Screen {
                 HEIGHT,
                 Text.translatable("gui.cookiejar.transfer_screen.server_address")
         );
+        serverField.setMaxLength(Integer.MAX_VALUE);
         serverField.setPlaceholder(Text.translatable("gui.cookiejar.transfer_screen.server_address_placeholder"));
         serverField.setEditableColor(CookieJar.COLOR_SUGGESTION);
         serverField.setChangedListener(this::editServer);
@@ -78,6 +79,7 @@ public class TransferScreen extends Screen {
     }
 
     private void connect() {
+        assert client != null;
         if (serverField.getText().isEmpty()) {
             return;
         }
@@ -95,6 +97,7 @@ public class TransferScreen extends Screen {
 
     @Override
     public void close() {
+        assert client != null;
         client.setScreen(parent);
     }
 

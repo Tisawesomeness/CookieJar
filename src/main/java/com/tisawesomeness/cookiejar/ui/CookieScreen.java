@@ -83,6 +83,8 @@ public class CookieScreen extends Screen {
 
     @Override
     protected void init() {
+        assert client != null;
+
         // init() is not a constructor, it may be called multiple times, so clearing is necessary
         cookieEntries.clear();
         // If client somehow opens screen without an active connection,
@@ -104,6 +106,7 @@ public class CookieScreen extends Screen {
                 TEXTURE_SIZE,
                 Text.translatable("gui.cookiejar.cookie_editor.key")
         );
+        keyWidget.setMaxLength(Integer.MAX_VALUE);
         keyWidget.setPlaceholder(Text.translatable("gui.cookiejar.cookie_editor.key_placeholder"));
         keyWidget.setEditableColor(CookieJar.COLOR_SUGGESTION);
         keyWidget.setChangedListener(this::editKey);
@@ -116,7 +119,7 @@ public class CookieScreen extends Screen {
                 TEXTURE_SIZE,
                 Text.translatable("gui.cookiejar.cookie_editor.payload")
         );
-        // Payload placeholder set by setDataType()
+        // Payload max size and placeholder set by setDataType()
         payloadWidget.setEditableColor(CookieJar.COLOR_SUGGESTION);
         payloadWidget.setChangedListener(payloadStr -> {
             setPayloadWidget(payloadWidget, payloadStr, payload -> payloadToAdd = payload);
@@ -270,6 +273,7 @@ public class CookieScreen extends Screen {
     }
 
     private void setPayloadWidget(TextFieldWidget widget, String payloadStr, Consumer<byte[]> validPayloadConsumer) {
+        widget.setMaxLength(dataType.getMaxLength(payloadStr));
         Optional<byte[]> payloadOpt = dataType.toPayload(payloadStr);
         if (payloadOpt.isPresent()) {
             validPayloadConsumer.accept(payloadOpt.get());
@@ -305,7 +309,9 @@ public class CookieScreen extends Screen {
         dataType = type;
         dataTypeButton.setMessage(type.label);
         dataTypeButton.setTooltip(type.tooltip);
-        payloadWidget.setText(type.toStringInput(payloadToAdd));
+        String input = type.toStringInput(payloadToAdd);
+        payloadWidget.setMaxLength(type.getMaxLength(input));
+        payloadWidget.setText(input);
         payloadWidget.setPlaceholder(type.getPayloadPlaceholder());
         cookieWidget.children().forEach(CookieListWidget.Entry::updatePayloadFromDataType);
     }
@@ -417,6 +423,7 @@ public class CookieScreen extends Screen {
 
     @Override
     public void close() {
+        assert client != null;
         client.setScreen(parent);
     }
 
@@ -499,6 +506,7 @@ public class CookieScreen extends Screen {
                         TEXTURE_SIZE,
                         Text.translatable("gui.cookiejar.cookie_editor.key")
                 );
+                keyWidget.setMaxLength(Integer.MAX_VALUE);
                 keyWidget.setText(key.toString());
                 keyWidget.setChangedListener(this::editKey);
 
@@ -531,7 +539,9 @@ public class CookieScreen extends Screen {
             }
 
             public void updatePayloadFromDataType() {
-                payloadWidget.setText(dataType.toStringInput(payload));
+                String input = dataType.toStringInput(payload);
+                payloadWidget.setMaxLength(dataType.getMaxLength(input));
+                payloadWidget.setText(input);
             }
 
             private void deleteCookie() {
@@ -650,10 +660,29 @@ public class CookieScreen extends Screen {
         /**
          * Tries to convert user input to a cookie payload.
          * @param input string
-         * @return the parsed cookie payload, or empty if invalid
+         * @return the parsed cookie payload, or empty if invalid or too long
          */
         public Optional<byte[]> toPayload(String input) {
-            return toPayloadFunc.apply(input);
+            return toPayloadFunc.apply(input).filter(payload -> payload.length <= CookieUtil.MAX_COOKIE_SIZE);
+        }
+
+        /**
+         * Calculates what the max length of a text box should be to not go over the cookie size limit.
+         * If typing any character would go above the cookie size limit, the max length will be the current length to
+         * prevent any more typing.
+         * Note that since UTF-8 strings use variable-length encoding, if the user has one byte remaining but enters a
+         * 2-byte character, the text box will be over the byte length limit but not the character length limit.
+         * @param input string user input, may or may not be valid
+         * @return the text box max length
+         */
+        public int getMaxLength(String input) {
+            if (this == BYTE_ARRAY) {
+                return Math.max(input.length(), CookieUtil.MAX_COOKIE_SIZE * 2);
+            }
+            if (input.getBytes(StandardCharsets.UTF_8).length >= CookieUtil.MAX_COOKIE_SIZE) {
+                return input.length();
+            }
+            return CookieUtil.MAX_COOKIE_SIZE;
         }
 
         /**
