@@ -40,8 +40,8 @@ public class CookieScreen extends Screen {
     private static final int KEY_WIDTH = 180;
     private static final int IMPORT_METHOD_WIDTH = 80;
 
-    private static final Identifier CROSS_BUTTON = Identifier.ofVanilla("widget/cross_button");
-    private static final Identifier CROSS_BUTTON_HIGHLIGHTED = Identifier.ofVanilla("widget/cross_button_highlighted");
+    private static final Identifier CROSS_BUTTON = new Identifier("widget/cross_button");
+    private static final Identifier CROSS_BUTTON_HIGHLIGHTED = new Identifier("widget/cross_button_highlighted");
 
     private final Screen parent;
     // reference to the same cookie map used in the network handler
