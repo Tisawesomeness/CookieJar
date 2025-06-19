@@ -32,9 +32,9 @@ public class CookieJar implements ClientModInitializer {
     /** Dummy ServerInfo only used to prevent crash */
     public static final ServerInfo SINGLEPLAYER_INFO = new ServerInfo("singleplayer", "cookiejar.singleplayer", ServerInfo.ServerType.OTHER);
 
-    public static final int COLOR_INVALID = 0xFF0000;
-    public static final int COLOR_VALID = 0xE0E0E0;
-    public static final int COLOR_SUGGESTION = 0x555555;
+    public static final int COLOR_INVALID = 0xFFFF0000;
+    public static final int COLOR_VALID = 0xFFE0E0E0;
+    public static final int COLOR_SUGGESTION = 0xFF555555;
 
     private static @Nullable ClientConnection lastKnownConnection;
     public static void updateConnection(ClientConnection connection) {
