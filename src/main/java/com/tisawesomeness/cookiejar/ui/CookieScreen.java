@@ -402,9 +402,7 @@ public class CookieScreen extends Screen {
             cookieEntries.add(newEntry);
             // Only add to the viewable list if the cookie passes the filter
             if (newEntry.passesFilter()) {
-                int searchIdx = Collections.binarySearch(cookieWidget.children(), newEntry, Comparator.comparing(c -> c.key));
-                int insertionIdx = -searchIdx - 1;
-                cookieWidget.children().add(insertionIdx, newEntry);
+                cookieWidget.populateFilteredFromMasterEntries();
             }
         } else {
             // Cookie already exists, only need to update payload
@@ -597,16 +595,19 @@ public class CookieScreen extends Screen {
                 return children;
             }
 
+            /**
+             * <strong>Unmodifiable!</strong>
+             */
             @Override
             public List<? extends Element> children() {
                 return children;
             }
 
             @Override
-            public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float tickDelta) {
+            public void render(DrawContext context, int mouseX, int mouseY, boolean hovered, float deltaTicks) {
                 children.forEach(child -> {
-                    child.setY(y);
-                    child.render(context, mouseX, mouseY, tickDelta);
+                    child.setY(getY());
+                    child.render(context, mouseX, mouseY, deltaTicks);
                 });
             }
         }

@@ -13,6 +13,6 @@ public class CookieJarConfig extends MidnightConfig {
     public static boolean enableSingleplayerFix = true;
 
     public enum IgnoreCondition {
-        NEVER, WHILE_SCREEN_OPEN, ALWAYS;
+        NEVER, WHILE_SCREEN_OPEN, ALWAYS
     }
 }

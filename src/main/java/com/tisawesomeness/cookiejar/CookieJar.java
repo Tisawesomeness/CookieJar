@@ -21,7 +21,6 @@ import net.minecraft.util.Identifier;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.Map;
 
@@ -48,8 +47,8 @@ public class CookieJar implements ClientModInitializer {
         KeyBinding openCookiesKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.cookiejar.open",
                 InputUtil.Type.KEYSYM,
-                GLFW.GLFW_KEY_UNKNOWN,
-                "category.cookiejar.title"
+                InputUtil.UNKNOWN_KEY.getCode(),
+                KeyBinding.Category.create(Identifier.of("cookiejar", "general"))
         ));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openCookiesKey.wasPressed()) {
