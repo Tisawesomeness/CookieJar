@@ -540,6 +540,7 @@ public class CookieScreen extends Screen {
 
             public void updatePayloadFromDataType() {
                 String input = dataType.toStringInput(payload);
+                payloadWidget.setCursor(0, false); // Prevent crash due to OOB selection
                 payloadWidget.setMaxLength(dataType.getMaxLength(input));
                 payloadWidget.setText(input);
             }
