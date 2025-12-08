@@ -3,25 +3,30 @@ package com.tisawesomeness.cookiejar.ui;
 import com.tisawesomeness.cookiejar.CookieJar;
 import com.tisawesomeness.cookiejar.CookieUtil;
 import eu.midnightdust.lib.config.MidnightConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.Selectable;
-import net.minecraft.client.gui.screen.ButtonTextures;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.*;
-import net.minecraft.client.network.ClientCommonNetworkHandler;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.ImageButton;
+import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.WidgetSprites;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl;
+import net.minecraft.locale.Language;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
-import net.minecraft.nbt.NbtSizeTracker;
-import net.minecraft.network.packet.c2s.common.CookieResponseC2SPacket;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.Language;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.cookie.ServerboundCookieResponsePacket;
+import net.minecraft.resources.Identifier;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.io.IOException;
@@ -40,27 +45,27 @@ public class CookieScreen extends Screen {
     private static final int KEY_WIDTH = 180;
     private static final int IMPORT_METHOD_WIDTH = 80;
 
-    private static final Identifier CROSS_BUTTON = Identifier.ofVanilla("widget/cross_button");
-    private static final Identifier CROSS_BUTTON_HIGHLIGHTED = Identifier.ofVanilla("widget/cross_button_highlighted");
+    private static final Identifier CROSS_BUTTON = Identifier.withDefaultNamespace("widget/cross_button");
+    private static final Identifier CROSS_BUTTON_HIGHLIGHTED = Identifier.withDefaultNamespace("widget/cross_button_highlighted");
 
     private final Screen parent;
     // reference to the same cookie map used in the network handler
     private final Map<Identifier, byte[]> cookies;
 
     // Row 1
-    private ButtonWidget addButton;
-    private TextFieldWidget keyWidget;
-    private TextFieldWidget payloadWidget;
-    private ButtonWidget transferButton;
-    private ButtonWidget settingsButton;
+    private Button addButton;
+    private EditBox keyWidget;
+    private EditBox payloadWidget;
+    private Button transferButton;
+    private Button settingsButton;
 
     // Row 2
-    private TextFieldWidget filterWidget;
-    private ButtonWidget dataTypeButton;
-    private ButtonWidget importButton;
-    private ButtonWidget importMethodButton;
-    private ButtonWidget exportButton;
-    private TexturedButtonWidget clearButton;
+    private EditBox filterWidget;
+    private Button dataTypeButton;
+    private Button importButton;
+    private Button importMethodButton;
+    private Button exportButton;
+    private ImageButton clearButton;
 
     // Cookie list
     private CookieListWidget cookieWidget;
@@ -76,101 +81,99 @@ public class CookieScreen extends Screen {
     private ImportMethod importMethod = ImportMethod.MERGE;
 
     public CookieScreen(Screen parent, Map<Identifier, byte[]> cookies) {
-        super(Text.translatable("gui.cookiejar.cookie_editor.title"));
+        super(Component.translatable("gui.cookiejar.cookie_editor.title"));
         this.parent = parent;
         this.cookies = cookies;
     }
 
     @Override
     protected void init() {
-        assert client != null;
-
         // init() is not a constructor, it may be called multiple times, so clearing is necessary
         cookieEntries.clear();
         // If client somehow opens screen without an active connection,
         // some buttons won't work and should be disabled
-        boolean allCookieActionsSupported = CookieJar.getNetworkHandler() != null;
+        boolean allCookieActionsSupported = CookieJar.getNetworkListener() != null;
 
         // Row 1
-        addButton = ButtonWidget.builder(Text.literal("+"), button -> addCookie())
-                .dimensions(PADDING, PADDING, TEXTURE_SIZE, TEXTURE_SIZE)
-                .tooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.add_cookie")))
+        addButton = Button.builder(Component.literal("+"), button -> addCookie())
+                .bounds(PADDING, PADDING, TEXTURE_SIZE, TEXTURE_SIZE)
+                .tooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.add_cookie")))
                 .build();
         addButton.active = false;
 
-        keyWidget = new TextFieldWidget(
-                textRenderer,
+        keyWidget = new EditBox(
+                font,
                 PADDING + TEXTURE_SIZE + PADDING,
                 PADDING,
                 KEY_WIDTH,
                 TEXTURE_SIZE,
-                Text.translatable("gui.cookiejar.cookie_editor.key")
+                Component.translatable("gui.cookiejar.cookie_editor.key")
         );
         keyWidget.setMaxLength(Integer.MAX_VALUE);
-        keyWidget.setPlaceholder(Text.translatable("gui.cookiejar.cookie_editor.key_placeholder"));
-        keyWidget.setEditableColor(CookieJar.COLOR_SUGGESTION);
-        keyWidget.setChangedListener(this::editKey);
+        keyWidget.setHint(Component.translatable("gui.cookiejar.cookie_editor.key_placeholder"));
+        keyWidget.setTextColor(CookieJar.COLOR_SUGGESTION);
+        keyWidget.setResponder(this::editKey);
 
-        payloadWidget = new TextFieldWidget(
-                textRenderer,
+        payloadWidget = new EditBox(
+                font,
                 PADDING + (TEXTURE_SIZE + PADDING + KEY_WIDTH) + PADDING,
                 PADDING,
                 width - (SCROLLER_WIDTH + PADDING + (TEXTURE_SIZE + PADDING) * 3 + PADDING * 2 + KEY_WIDTH),
                 TEXTURE_SIZE,
-                Text.translatable("gui.cookiejar.cookie_editor.payload")
+                Component.translatable("gui.cookiejar.cookie_editor.payload")
         );
         // Payload max size and placeholder set by setDataType()
-        payloadWidget.setEditableColor(CookieJar.COLOR_SUGGESTION);
-        payloadWidget.setChangedListener(payloadStr -> {
+        payloadWidget.setTextColor(CookieJar.COLOR_SUGGESTION);
+        payloadWidget.setResponder(payloadStr -> {
             setPayloadWidget(payloadWidget, payloadStr, payload -> payloadToAdd = payload);
         });
 
-        transferButton = ButtonWidget.builder(Text.literal("➡"), button -> {
-                    client.setScreen(new TransferScreen(this));
+        transferButton = Button.builder(Component.literal("➡"), button -> {
+                    minecraft.setScreen(new TransferScreen(this));
                 })
-                .dimensions(
+                .bounds(
                         width - (SCROLLER_WIDTH + (TEXTURE_SIZE + PADDING) * 2),
                         PADDING,
                         TEXTURE_SIZE,
                         TEXTURE_SIZE
                 )
-                .tooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.transfer")))
+                .tooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.transfer")))
                 .build();
         transferButton.active = allCookieActionsSupported;
 
-        settingsButton = ButtonWidget.builder(Text.literal("\uD83D\uDD27"), button -> {
-                    client.setScreen(MidnightConfig.getScreen(this, "cookiejar"));
+        settingsButton = Button.builder(Component.literal("\uD83D\uDD27"), button -> {
+                    minecraft.setScreen(MidnightConfig.getScreen(this, "cookiejar"));
                 })
-                .dimensions(
+                .bounds(
                         width - (SCROLLER_WIDTH + TEXTURE_SIZE + PADDING),
                         PADDING,
                         TEXTURE_SIZE,
                         TEXTURE_SIZE
                 )
-                .tooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.settings")))
+                .tooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.settings")))
                 .build();
 
-        addDrawableChild(addButton);
-        addDrawableChild(keyWidget);
-        addDrawableChild(payloadWidget);
-        addDrawableChild(transferButton);
-        addDrawableChild(settingsButton);
+        addRenderableWidget(addButton);
+        addRenderableWidget(keyWidget);
+        addRenderableWidget(payloadWidget);
+        addRenderableWidget(transferButton);
+        addRenderableWidget(settingsButton);
 
         // Row 2
-        filterWidget = new TextFieldWidget(
-                textRenderer,
+        filterWidget = new EditBox(
+                font,
                 PADDING,
                 PADDING + TEXTURE_SIZE + PADDING,
                 KEY_WIDTH,
                 TEXTURE_SIZE,
-                Text.translatable("gui.cookiejar.cookie_editor.filter")
+                Component.translatable("gui.cookiejar.cookie_editor.filter")
         );
-        filterWidget.setPlaceholder(Text.translatable("gui.cookiejar.cookie_editor.filter_placeholder"));
-        filterWidget.setEditableColor(CookieJar.COLOR_SUGGESTION);
-        filterWidget.setChangedListener(this::editFilter);
+        filterWidget.setHint(Component.translatable("gui.cookiejar.cookie_editor.filter_placeholder"));
+        filterWidget.setTextColor(CookieJar.COLOR_SUGGESTION);
+        filterWidget.setResponder(this::editFilter);
 
-        dataTypeButton = ButtonWidget.builder(Text.literal("S"), button -> cycleDataType())
-                .dimensions(
+        dataTypeButton = Button.builder(Component.literal("S"), button -> cycleDataType())
+                .bounds(
                         PADDING + KEY_WIDTH + PADDING,
                         PADDING + TEXTURE_SIZE + PADDING,
                         TEXTURE_SIZE,
@@ -179,18 +182,18 @@ public class CookieScreen extends Screen {
                 .build();
         // Data type set at end, after cookie widget initialized
 
-        importButton = ButtonWidget.builder(Text.literal("\uD83D\uDCE4"), button -> importCookies())
-                .dimensions(
+        importButton = Button.builder(Component.literal("\uD83D\uDCE4"), button -> importCookies())
+                .bounds(
                         width - (SCROLLER_WIDTH + (TEXTURE_SIZE + PADDING) * 3 + IMPORT_METHOD_WIDTH + PADDING),
                         PADDING + TEXTURE_SIZE + PADDING,
                         TEXTURE_SIZE,
                         TEXTURE_SIZE
                 )
-                .tooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.import")))
+                .tooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.import")))
                 .build();
 
-        importMethodButton = ButtonWidget.builder(Text.literal(""), button -> cycleImportMethod())
-                .dimensions(
+        importMethodButton = Button.builder(Component.literal(""), button -> cycleImportMethod())
+                .bounds(
                         width - (SCROLLER_WIDTH + (TEXTURE_SIZE + PADDING) * 2 + IMPORT_METHOD_WIDTH + PADDING),
                         PADDING + TEXTURE_SIZE + PADDING,
                         IMPORT_METHOD_WIDTH,
@@ -199,36 +202,36 @@ public class CookieScreen extends Screen {
                 .build();
         setImportMethod(importMethod);
 
-        exportButton = ButtonWidget.builder(Text.literal("\uD83D\uDCE5"), button -> exportCookies())
-                .dimensions(
+        exportButton = Button.builder(Component.literal("\uD83D\uDCE5"), button -> exportCookies())
+                .bounds(
                         width - (SCROLLER_WIDTH + (TEXTURE_SIZE + PADDING) * 2),
                         PADDING + TEXTURE_SIZE + PADDING,
                         TEXTURE_SIZE,
                         TEXTURE_SIZE
                 )
-                .tooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.export")))
+                .tooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.export")))
                 .build();
 
-        clearButton = new TexturedButtonWidget(
+        clearButton = new ImageButton(
                 width - (SCROLLER_WIDTH + TEXTURE_SIZE + PADDING),
                 PADDING + TEXTURE_SIZE + PADDING,
                 TEXTURE_SIZE,
                 TEXTURE_SIZE,
-                new ButtonTextures(CROSS_BUTTON, CROSS_BUTTON_HIGHLIGHTED),
+                new WidgetSprites(CROSS_BUTTON, CROSS_BUTTON_HIGHLIGHTED),
                 button -> clear(),
-                Text.translatable("gui.cookiejar.cookie_editor.clear")
+                Component.translatable("gui.cookiejar.cookie_editor.clear")
         );
-        clearButton.setTooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.clear")));
+        clearButton.setTooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.clear")));
 
-        addDrawableChild(filterWidget);
-        addDrawableChild(dataTypeButton);
-        addDrawableChild(importButton);
-        addDrawableChild(importMethodButton);
-        addDrawableChild(exportButton);
-        addDrawableChild(clearButton);
+        addRenderableWidget(filterWidget);
+        addRenderableWidget(dataTypeButton);
+        addRenderableWidget(importButton);
+        addRenderableWidget(importMethodButton);
+        addRenderableWidget(exportButton);
+        addRenderableWidget(clearButton);
 
         // Cookie list
-        cookieWidget = new CookieListWidget(client,
+        cookieWidget = new CookieListWidget(minecraft,
                 width,
                 height - (PADDING + (TEXTURE_SIZE + PADDING) * 2),
                 PADDING + (TEXTURE_SIZE + PADDING) * 2,
@@ -238,7 +241,7 @@ public class CookieScreen extends Screen {
         setDataType(dataType);
         cookieWidget.populateFilteredFromMasterEntries();
 
-        addDrawableChild(cookieWidget);
+        addRenderableWidget(cookieWidget);
     }
 
     private void populateEntriesFromCookies(boolean allCookieActionsSupported) {
@@ -255,44 +258,44 @@ public class CookieScreen extends Screen {
 
     private void editKey(String keyStr) {
         if (keyStr.isEmpty()) {
-            keyWidget.setEditableColor(CookieJar.COLOR_SUGGESTION);
+            keyWidget.setTextColor(CookieJar.COLOR_SUGGESTION);
             keyToAdd = null;
             addButton.active = false;
             return;
         }
         Identifier newKey = Identifier.tryParse(keyStr);
         if (newKey == null) {
-            keyWidget.setEditableColor(CookieJar.COLOR_INVALID);
+            keyWidget.setTextColor(CookieJar.COLOR_INVALID);
             keyToAdd = null;
             addButton.active = false;
         } else {
-            keyWidget.setEditableColor(CookieJar.COLOR_VALID);
+            keyWidget.setTextColor(CookieJar.COLOR_VALID);
             keyToAdd = newKey;
             addButton.active = true;
         }
     }
 
-    private void setPayloadWidget(TextFieldWidget widget, String payloadStr, Consumer<byte[]> validPayloadConsumer) {
+    private void setPayloadWidget(EditBox widget, String payloadStr, Consumer<byte[]> validPayloadConsumer) {
         widget.setMaxLength(dataType.getMaxLength(payloadStr));
         Optional<byte[]> payloadOpt = dataType.toPayload(payloadStr);
         if (payloadOpt.isPresent()) {
             validPayloadConsumer.accept(payloadOpt.get());
             if (payloadStr.isEmpty()) {
-                widget.setEditableColor(CookieJar.COLOR_SUGGESTION);
+                widget.setTextColor(CookieJar.COLOR_SUGGESTION);
             } else {
-                widget.setEditableColor(CookieJar.COLOR_VALID);
+                widget.setTextColor(CookieJar.COLOR_VALID);
             }
         } else {
-            widget.setEditableColor(CookieJar.COLOR_INVALID);
+            widget.setTextColor(CookieJar.COLOR_INVALID);
         }
     }
 
     private void editFilter(String filterStr) {
         if (filterStr.isEmpty()) {
-            filterWidget.setEditableColor(CookieJar.COLOR_SUGGESTION);
+            filterWidget.setTextColor(CookieJar.COLOR_SUGGESTION);
             filter = null;
         } else {
-            filterWidget.setEditableColor(CookieJar.COLOR_VALID);
+            filterWidget.setTextColor(CookieJar.COLOR_VALID);
             filter = filterStr;
         }
         cookieWidget.populateFilteredFromMasterEntries();
@@ -311,8 +314,8 @@ public class CookieScreen extends Screen {
         dataTypeButton.setTooltip(type.tooltip);
         String input = type.toStringInput(payloadToAdd);
         payloadWidget.setMaxLength(type.getMaxLength(input));
-        payloadWidget.setText(input);
-        payloadWidget.setPlaceholder(type.getPayloadPlaceholder());
+        payloadWidget.setValue(input);
+        payloadWidget.setHint(type.getPayloadPlaceholder());
         cookieWidget.children().forEach(CookieListWidget.Entry::updatePayloadFromDataType);
     }
 
@@ -335,10 +338,10 @@ public class CookieScreen extends Screen {
         if (pathStr == null) {
             return;
         }
-        NbtCompound nbt;
+        CompoundTag nbt;
         try {
             // No cookie file should get anywhere close to 1G, but just in case...
-            nbt = NbtIo.readCompressed(Paths.get(pathStr), NbtSizeTracker.of(CookieUtil.ONE_GIGABYTE));
+            nbt = NbtIo.readCompressed(Paths.get(pathStr), NbtAccounter.create(CookieUtil.ONE_GIGABYTE));
         } catch (IOException e) {
             CookieJar.LOGGER.error("Failed to import cookies", e);
             return;
@@ -349,7 +352,7 @@ public class CookieScreen extends Screen {
             case MERGE -> cookies.putAll(imported);
         }
         // Connection status could have changed since menu opened
-        boolean allCookieActionsSupported = CookieJar.getNetworkHandler() != null;
+        boolean allCookieActionsSupported = CookieJar.getNetworkListener() != null;
         // Completely re-create list of entries
         cookieEntries.clear();
         populateEntriesFromCookies(allCookieActionsSupported);
@@ -397,7 +400,7 @@ public class CookieScreen extends Screen {
         // If the cookie is new, add it to the list
         if (existingEntry == null) {
             // Update master entry list
-            boolean allCookieActionsSupported = CookieJar.getNetworkHandler() != null;
+            boolean allCookieActionsSupported = CookieJar.getNetworkListener() != null;
             CookieListWidget.Entry newEntry = cookieWidget.newEntry(key, payload, allCookieActionsSupported);
             cookieEntries.add(newEntry);
             // Only add to the viewable list if the cookie passes the filter
@@ -415,19 +418,18 @@ public class CookieScreen extends Screen {
     public void tick() {
         super.tick();
         // Connection status could have changed since menu opened
-        boolean allCookieActionsSupported = CookieJar.getNetworkHandler() != null;
+        boolean allCookieActionsSupported = CookieJar.getNetworkListener() != null;
         cookieWidget.children().forEach(c -> c.setSendButtonActive(allCookieActionsSupported));
     }
 
     @Override
-    public void close() {
-        assert client != null;
-        client.setScreen(parent);
+    public void onClose() {
+        minecraft.setScreen(parent);
     }
 
-    private class CookieListWidget extends ElementListWidget<CookieListWidget.Entry> {
+    private class CookieListWidget extends ContainerObjectSelectionList<CookieListWidget.@NonNull Entry> {
 
-        public CookieListWidget(MinecraftClient client, int width, int height, int y, int itemHeight) {
+        public CookieListWidget(Minecraft client, int width, int height, int y, int itemHeight) {
             super(client, width, height, y, itemHeight);
         }
 
@@ -461,68 +463,68 @@ public class CookieScreen extends Screen {
         }
 
         @Override
-        protected int getScrollbarX() {
+        protected int scrollBarX() {
             return width - SCROLLER_WIDTH;
         }
 
-        private class Entry extends ElementListWidget.Entry<Entry> {
+        private class Entry extends ContainerObjectSelectionList.Entry<@NonNull Entry> {
 
             // Data updated when user types, last known good value
             private Identifier key;
             private byte[] payload;
 
-            private final List<ClickableWidget> children;
-            private final TexturedButtonWidget deleteButton;
-            private final ButtonWidget sendButton;
-            private final TextFieldWidget keyWidget;
-            private final ButtonWidget copyButton;
-            private final TextFieldWidget payloadWidget;
+            private final List<AbstractWidget> children;
+            private final ImageButton deleteButton;
+            private final Button sendButton;
+            private final EditBox keyWidget;
+            private final Button copyButton;
+            private final EditBox payloadWidget;
 
             public Entry(Identifier key, byte[] payload, boolean allCookieActionsSupported) {
                 this.key = key;
                 this.payload = payload;
 
-                deleteButton = new TexturedButtonWidget(
-                        PADDING, 0, TEXTURE_SIZE, TEXTURE_SIZE,
-                        new ButtonTextures(CROSS_BUTTON, CROSS_BUTTON_HIGHLIGHTED),
+                deleteButton = new ImageButton(
+                        CONTENT_PADDING, 0, TEXTURE_SIZE, TEXTURE_SIZE,
+                        new WidgetSprites(CROSS_BUTTON, CROSS_BUTTON_HIGHLIGHTED),
                         button -> deleteCookie(),
-                        Text.translatable("gui.cookiejar.cookie_editor.delete")
+                        Component.translatable("gui.cookiejar.cookie_editor.delete")
                 );
-                deleteButton.setTooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.delete")));
+                deleteButton.setTooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.delete")));
 
-                sendButton = ButtonWidget.builder(Text.literal("\uD83D\uDCE8"), button -> sendCookie())
-                        .dimensions(PADDING + TEXTURE_SIZE + PADDING, 0, TEXTURE_SIZE, TEXTURE_SIZE)
-                        .tooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.send")))
+                sendButton = Button.builder(Component.literal("\uD83D\uDCE8"), button -> sendCookie())
+                        .bounds(CONTENT_PADDING + TEXTURE_SIZE + CONTENT_PADDING, 0, TEXTURE_SIZE, TEXTURE_SIZE)
+                        .tooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.send")))
                         .build();
                 sendButton.active = allCookieActionsSupported;
 
-                keyWidget = new TextFieldWidget(
-                        textRenderer,
-                        (PADDING + TEXTURE_SIZE) * 2 + PADDING,
+                keyWidget = new EditBox(
+                        font,
+                        (CONTENT_PADDING + TEXTURE_SIZE) * 2 + CONTENT_PADDING,
                         0,
                         KEY_WIDTH,
                         TEXTURE_SIZE,
-                        Text.translatable("gui.cookiejar.cookie_editor.key")
+                        Component.translatable("gui.cookiejar.cookie_editor.key")
                 );
                 keyWidget.setMaxLength(Integer.MAX_VALUE);
-                keyWidget.setText(key.toString());
-                keyWidget.setChangedListener(this::editKey);
+                keyWidget.setValue(key.toString());
+                keyWidget.setResponder(this::editKey);
 
-                copyButton = ButtonWidget.builder(Text.literal("\uD83D\uDCCB"), button -> copyPayload())
-                        .dimensions((PADDING + TEXTURE_SIZE) * 2 + PADDING + KEY_WIDTH + PADDING, 0, TEXTURE_SIZE, TEXTURE_SIZE)
-                        .tooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.copy_payload")))
+                copyButton = Button.builder(Component.literal("\uD83D\uDCCB"), button -> copyPayload())
+                        .bounds((CONTENT_PADDING + TEXTURE_SIZE) * 2 + CONTENT_PADDING + KEY_WIDTH + CONTENT_PADDING, 0, TEXTURE_SIZE, TEXTURE_SIZE)
+                        .tooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.copy_payload")))
                         .build();
 
-                payloadWidget = new TextFieldWidget(
-                        textRenderer,
-                        (PADDING + TEXTURE_SIZE) * 3 + PADDING + KEY_WIDTH + PADDING,
+                payloadWidget = new EditBox(
+                        font,
+                        (CONTENT_PADDING + TEXTURE_SIZE) * 3 + CONTENT_PADDING + KEY_WIDTH + CONTENT_PADDING,
                         0,
-                        width - ((SCROLLER_WIDTH + (PADDING + TEXTURE_SIZE) * 3 + PADDING + KEY_WIDTH + PADDING) + PADDING),
+                        width - ((SCROLLER_WIDTH + (CONTENT_PADDING + TEXTURE_SIZE) * 3 + CONTENT_PADDING + KEY_WIDTH + CONTENT_PADDING) + CONTENT_PADDING),
                         TEXTURE_SIZE,
-                        Text.translatable("gui.cookiejar.cookie_editor.payload")
+                        Component.translatable("gui.cookiejar.cookie_editor.payload")
                 );
                 updatePayloadFromDataType();
-                payloadWidget.setChangedListener(this::editPayload);
+                payloadWidget.setResponder(this::editPayload);
 
                 children = List.of(deleteButton, sendButton, keyWidget, copyButton, payloadWidget);
             }
@@ -530,17 +532,17 @@ public class CookieScreen extends Screen {
             public void setSendButtonActive(boolean active) {
                 sendButton.active = active;
                 if (active) {
-                    sendButton.setTooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.send")));
+                    sendButton.setTooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.send")));
                 } else {
-                    sendButton.setTooltip(Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.send_disabled")));
+                    sendButton.setTooltip(Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.send_disabled")));
                 }
             }
 
             public void updatePayloadFromDataType() {
                 String input = dataType.toStringInput(payload);
-                payloadWidget.setCursor(0, false); // Prevent crash due to OOB selection
+                payloadWidget.moveCursorTo(0, false); // Prevent crash due to OOB selection
                 payloadWidget.setMaxLength(dataType.getMaxLength(input));
-                payloadWidget.setText(input);
+                payloadWidget.setValue(input);
             }
 
             private void deleteCookie() {
@@ -558,9 +560,9 @@ public class CookieScreen extends Screen {
                 }
                 // Show key as invalid if it already exists, two identical keys cannot exist
                 if (newKey == null || cookies.containsKey(newKey)) {
-                    keyWidget.setEditableColor(CookieJar.COLOR_INVALID);
+                    keyWidget.setTextColor(CookieJar.COLOR_INVALID);
                 } else {
-                    keyWidget.setEditableColor(CookieJar.COLOR_VALID);
+                    keyWidget.setTextColor(CookieJar.COLOR_VALID);
                     cookies.remove(key);
                     cookies.put(newKey, payload);
                     key = newKey;
@@ -568,12 +570,12 @@ public class CookieScreen extends Screen {
             }
 
             private void sendCookie() {
-                ClientCommonNetworkHandler handler = CookieJar.getNetworkHandler();
-                if (handler == null) {
+                ClientCommonPacketListenerImpl listener = CookieJar.getNetworkListener();
+                if (listener == null) {
                     return;
                 }
-                CookieResponseC2SPacket packet = new CookieResponseC2SPacket(key, payload);
-                handler.sendPacket(packet);
+                ServerboundCookieResponsePacket packet = new ServerboundCookieResponsePacket(key, payload);
+                listener.send(packet);
             }
 
             private void editPayload(String payloadStr) {
@@ -584,7 +586,7 @@ public class CookieScreen extends Screen {
             }
 
             private void copyPayload() {
-                client.keyboard.setClipboard(dataType.toStringInput(payload));
+                minecraft.keyboardHandler.setClipboard(dataType.toStringInput(payload));
             }
 
             public boolean passesFilter() {
@@ -592,7 +594,7 @@ public class CookieScreen extends Screen {
             }
 
             @Override
-            public List<? extends Selectable> selectableChildren() {
+            public @NonNull List<? extends NarratableEntry> narratables() {
                 return children;
             }
 
@@ -600,12 +602,12 @@ public class CookieScreen extends Screen {
              * <strong>Unmodifiable!</strong>
              */
             @Override
-            public List<? extends Element> children() {
+            public @NonNull List<? extends GuiEventListener> children() {
                 return children;
             }
 
             @Override
-            public void render(DrawContext context, int mouseX, int mouseY, boolean hovered, float deltaTicks) {
+            public void renderContent(@NonNull GuiGraphics context, int mouseX, int mouseY, boolean hovered, float deltaTicks) {
                 children.forEach(child -> {
                     child.setY(getY());
                     child.render(context, mouseX, mouseY, deltaTicks);
@@ -618,15 +620,15 @@ public class CookieScreen extends Screen {
     private enum DataType {
         /** UTF-8 string, always valid */
         STRING(
-                Text.literal("S").withColor(0xFFFFFF),
-                Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.string_data")),
+                Component.literal("S").withColor(0xFFFFFF),
+                Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.string_data")),
                 payload -> new String(payload, StandardCharsets.UTF_8),
                 input -> Optional.of(input.getBytes(StandardCharsets.UTF_8))
         ),
         /** Raw bytes, edited in hex form */
         BYTE_ARRAY(
-                Text.literal("B").withColor(0xBB833A),
-                Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.byte_data")),
+                Component.literal("B").withColor(0xBB833A),
+                Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.byte_data")),
                 Hex::encodeHexString,
                 input -> {
                     try {
@@ -637,14 +639,14 @@ public class CookieScreen extends Screen {
                 }
         );
 
-        public final Text label;
+        public final Component label;
         public final Tooltip tooltip;
         // Convert from raw payload to string displayed in text box
         private final Function<byte[], String> toDisplayFunc;
         // Convert from string displayed in text box to raw payload, or empty if invalid
         private final Function<String, Optional<byte[]>> toPayloadFunc;
 
-        DataType(Text label, Tooltip tooltip, Function<byte[], String> toDisplayFunc, Function<String, Optional<byte[]>> toPayloadFunc) {
+        DataType(Component label, Tooltip tooltip, Function<byte[], String> toDisplayFunc, Function<String, Optional<byte[]>> toPayloadFunc) {
             this.label = label;
             this.tooltip = tooltip;
             this.toDisplayFunc = toDisplayFunc;
@@ -692,33 +694,33 @@ public class CookieScreen extends Screen {
          * string in the current data type that produces the same payload.
          * @return placeholder to put in the data text box
          */
-        public Text getPayloadPlaceholder() {
+        public Component getPayloadPlaceholder() {
             if (this == DataType.STRING) {
-                return Text.translatable("gui.cookiejar.cookie_editor.payload_placeholder");
+                return Component.translatable("gui.cookiejar.cookie_editor.payload_placeholder");
             }
-            String localized = Language.getInstance().get("gui.cookiejar.cookie_editor.payload_placeholder");
+            String localized = Language.getInstance().getOrDefault("gui.cookiejar.cookie_editor.payload_placeholder");
             byte[] intermediatePayload = DataType.STRING.toPayload(localized).orElseThrow();
             String placeholder = toStringInput(intermediatePayload);
-            return Text.literal(placeholder);
+            return Component.literal(placeholder);
         }
     }
 
     private enum ImportMethod {
         /** Strictly adds cookies, no updating */
         ADD(
-                Text.translatable("gui.cookiejar.cookie_editor.import_add"),
-                Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.import_add_description"))
+                Component.translatable("gui.cookiejar.cookie_editor.import_add"),
+                Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.import_add_description"))
         ),
         /** Merges all cookies, overwriting existing ones */
         MERGE(
-                Text.translatable("gui.cookiejar.cookie_editor.import_merge"),
-                Tooltip.of(Text.translatable("gui.cookiejar.cookie_editor.import_merge_description"))
+                Component.translatable("gui.cookiejar.cookie_editor.import_merge"),
+                Tooltip.create(Component.translatable("gui.cookiejar.cookie_editor.import_merge_description"))
         );
 
-        public final Text label;
+        public final Component label;
         public final Tooltip tooltip;
 
-        ImportMethod(Text label, Tooltip tooltip) {
+        ImportMethod(Component label, Tooltip tooltip) {
             this.label = label;
             this.tooltip = tooltip;
         }

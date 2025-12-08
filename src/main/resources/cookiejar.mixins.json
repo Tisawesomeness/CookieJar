@@ -4,12 +4,12 @@
   "package": "com.tisawesomeness.cookiejar.mixin",
   "compatibilityLevel": "JAVA_17",
   "client": [
-    "ClientCommonNetworkHandlerAccessor",
-    "ClientCommonNetworkHandlerMixin",
-    "ClientConnectionAccessor",
-    "ClientConnectionMixin",
+    "ClientCommonPacketListenerImplAccessor",
+    "ClientCommonPacketListenerImplMixin",
+    "ConnectionAccessor",
+    "ConnectionMixin",
     "ServerAddressAccessor",
-    "StoreCookieS2CPacketAccessor"
+    "ClientboundStoreCookiePacketAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

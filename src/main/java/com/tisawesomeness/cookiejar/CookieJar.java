@@ -1,26 +1,26 @@
 package com.tisawesomeness.cookiejar;
 
 import com.tisawesomeness.cookiejar.ui.CookieScreen;
-import com.tisawesomeness.cookiejar.mixin.ClientCommonNetworkHandlerAccessor;
-import com.tisawesomeness.cookiejar.mixin.ClientConnectionAccessor;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.tisawesomeness.cookiejar.mixin.ClientCommonPacketListenerImplAccessor;
+import com.tisawesomeness.cookiejar.mixin.ConnectionAccessor;
 import com.tisawesomeness.cookiejar.ui.TransferScreen;
 import eu.midnightdust.lib.config.MidnightConfig;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientCommonNetworkHandler;
-import net.minecraft.client.network.ServerInfo;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.network.ClientConnection;
-import net.minecraft.network.listener.PacketListener;
-import net.minecraft.network.packet.s2c.common.ServerTransferS2CPacket;
-import net.minecraft.network.packet.s2c.common.StoreCookieS2CPacket;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.network.Connection;
+import net.minecraft.network.PacketListener;
+import net.minecraft.network.protocol.common.ClientboundStoreCookiePacket;
+import net.minecraft.network.protocol.common.ClientboundTransferPacket;
+import net.minecraft.resources.Identifier;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
 
@@ -28,15 +28,15 @@ public class CookieJar implements ClientModInitializer {
 
     public static final Logger LOGGER = LogManager.getLogger("CookieJar");
 
-    /** Dummy ServerInfo only used to prevent crash */
-    public static final ServerInfo SINGLEPLAYER_INFO = new ServerInfo("singleplayer", "cookiejar.singleplayer", ServerInfo.ServerType.OTHER);
+    /** Dummy ServerData only used to prevent crash */
+    public static final ServerData SINGLEPLAYER_INFO = new ServerData("singleplayer", "cookiejar.singleplayer", ServerData.Type.OTHER);
 
     public static final int COLOR_INVALID = 0xFFFF0000;
     public static final int COLOR_VALID = 0xFFE0E0E0;
     public static final int COLOR_SUGGESTION = 0xFF555555;
 
-    private static @Nullable ClientConnection lastKnownConnection;
-    public static void updateConnection(ClientConnection connection) {
+    private static @Nullable Connection lastKnownConnection;
+    public static void updateConnection(Connection connection) {
         lastKnownConnection = connection;
     }
 
@@ -44,54 +44,54 @@ public class CookieJar implements ClientModInitializer {
     public void onInitializeClient() {
         // Also inits ModMenu integration
         MidnightConfig.init("cookiejar", CookieJarConfig.class);
-        KeyBinding openCookiesKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        KeyMapping openCookiesKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.cookiejar.open",
-                InputUtil.Type.KEYSYM,
-                InputUtil.UNKNOWN_KEY.getCode(),
-                KeyBinding.Category.create(Identifier.of("cookiejar", "general"))
+                InputConstants.Type.KEYSYM,
+                InputConstants.UNKNOWN.getValue(),
+                KeyMapping.Category.register(Identifier.fromNamespaceAndPath("cookiejar", "general"))
         ));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (openCookiesKey.wasPressed()) {
+            while (openCookiesKey.consumeClick()) {
                 tryOpenCookieScreen(client);
             }
         });
     }
 
-    private static void tryOpenCookieScreen(MinecraftClient client) {
-        ClientCommonNetworkHandler handler = getNetworkHandler();
+    private static void tryOpenCookieScreen(Minecraft client) {
+        ClientCommonPacketListenerImpl listener = getNetworkListener();
         // If client somehow opens cookie editor without an active connection, fail silently
-        if (handler == null) {
+        if (listener == null) {
             return;
         }
-        Map<Identifier, byte[]> cookies = ((ClientCommonNetworkHandlerAccessor) handler).getServerCookies();
-        client.setScreen(new CookieScreen(client.currentScreen, cookies));
+        Map<Identifier, byte[]> cookies = ((ClientCommonPacketListenerImplAccessor) listener).getServerCookies();
+        client.setScreen(new CookieScreen(client.screen, cookies));
     }
 
-    public static @Nullable ClientCommonNetworkHandler getNetworkHandler() {
-        ClientConnection connection = getConnectionIfAlive();
+    public static @Nullable ClientCommonPacketListenerImpl getNetworkListener() {
+        Connection connection = getConnectionIfAlive();
         if (connection == null) {
             return null;
         }
-        PacketListener listener = connection.getPacketListener();
-        if (listener instanceof ClientCommonNetworkHandler handler) {
-            return handler;
+        PacketListener packetListener = connection.getPacketListener();
+        if (packetListener instanceof ClientCommonPacketListenerImpl networkListener) {
+            return networkListener;
         }
         return null;
     }
 
-    private static @Nullable ClientConnection getConnectionIfAlive() {
+    private static @Nullable Connection getConnectionIfAlive() {
         if (lastKnownConnection == null) {
             return null;
         }
-        if (((ClientConnectionAccessor) lastKnownConnection).isDisconnected()) {
+        if (((ConnectionAccessor) lastKnownConnection).isDisconnected()) {
             return null;
         }
         return lastKnownConnection;
     }
 
-    public static void onStoreCookie(StoreCookieS2CPacket packet) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.currentScreen instanceof CookieScreen cookieScreen) {
+    public static void onStoreCookie(ClientboundStoreCookiePacket packet) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.screen instanceof CookieScreen cookieScreen) {
             cookieScreen.onStoreCookie(packet.key());
         }
     }
@@ -99,15 +99,15 @@ public class CookieJar implements ClientModInitializer {
     public static boolean shouldIgnoreCookieStore() {
         return CookieJarConfig.ignoreCookieStores == CookieJarConfig.IgnoreCondition.ALWAYS ||
                 (CookieJarConfig.ignoreCookieStores == CookieJarConfig.IgnoreCondition.WHILE_SCREEN_OPEN &&
-                        MinecraftClient.getInstance().currentScreen instanceof CookieScreen);
+                        Minecraft.getInstance().screen instanceof CookieScreen);
     }
 
-    public static boolean shouldIgnoreTransfer(ServerTransferS2CPacket packet) {
+    public static boolean shouldIgnoreTransfer(ClientboundTransferPacket packet) {
         if (!CookieJarConfig.ignoreTransfers) {
             return false;
         }
         // Even if ignore transfers enabled, must let through packets created from transfer screen
-        if (MinecraftClient.getInstance().currentScreen instanceof TransferScreen transferScreen) {
+        if (Minecraft.getInstance().screen instanceof TransferScreen transferScreen) {
             return !transferScreen.isSamePacket(packet);
         }
         return true;

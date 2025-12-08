@@ -1,6 +1,6 @@
 package com.tisawesomeness.cookiejar.mixin;
 
-import net.minecraft.client.network.ServerAddress;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
