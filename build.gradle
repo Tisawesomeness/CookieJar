@@ -12,8 +12,13 @@ repositories {
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
+    // MidnightLib
     maven {
-        url = "https://api.modrinth.com/maven"
+        url = "https://maven.midnightdust.eu/releases"
+    }
+    // ModMenu (transitive dep from MidnightLib)
+    maven {
+        url = "https://maven.terraformersmc.com/"
     }
 }
 
@@ -26,7 +31,7 @@ dependencies {
     // Fabric API. This is technically optional, but you probably want it anyway.
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    modImplementation include("maven.modrinth:midnightlib:${project.midnightlib_version}")
+    modImplementation include("eu.midnightdust:midnightlib:${project.midnightlib_version}")
 }
 
 processResources {
@@ -59,7 +64,7 @@ java {
     if (JavaVersion.current() < javaVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     }
-    archivesBaseName = project.archives_base_name
+    base.archivesName = project.archives_base_name
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
     // if it is present.
     // If you remove this line, sources will not be generated.
@@ -68,7 +73,7 @@ java {
 
 jar {
     from("LICENSE") {
-        rename { "${it}_${project.archivesBaseName}" }
+        rename { "${it}_${project.base.archivesName}" }
     }
 }
 
