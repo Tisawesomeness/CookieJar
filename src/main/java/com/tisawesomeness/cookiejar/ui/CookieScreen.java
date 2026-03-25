@@ -4,7 +4,7 @@ import com.tisawesomeness.cookiejar.CookieJar;
 import com.tisawesomeness.cookiejar.CookieUtil;
 import eu.midnightdust.lib.config.MidnightConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
@@ -607,10 +607,10 @@ public class CookieScreen extends Screen {
             }
 
             @Override
-            public void renderContent(@NonNull GuiGraphics context, int mouseX, int mouseY, boolean hovered, float deltaTicks) {
+            public void extractContent(@NonNull GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float deltaTicks) {
                 children.forEach(child -> {
                     child.setY(getY());
-                    child.render(context, mouseX, mouseY, deltaTicks);
+                    child.extractRenderState(graphics, mouseX, mouseY, deltaTicks);
                 });
             }
         }

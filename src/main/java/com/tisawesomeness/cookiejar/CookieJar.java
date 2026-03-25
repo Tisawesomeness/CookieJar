@@ -8,7 +8,7 @@ import com.tisawesomeness.cookiejar.ui.TransferScreen;
 import eu.midnightdust.lib.config.MidnightConfig;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl;
@@ -44,7 +44,7 @@ public class CookieJar implements ClientModInitializer {
     public void onInitializeClient() {
         // Also inits ModMenu integration
         MidnightConfig.init("cookiejar", CookieJarConfig.class);
-        KeyMapping openCookiesKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        KeyMapping openCookiesKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.cookiejar.open",
                 InputConstants.Type.KEYSYM,
                 InputConstants.UNKNOWN.getValue(),
