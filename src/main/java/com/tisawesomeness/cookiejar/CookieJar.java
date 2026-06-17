@@ -64,7 +64,7 @@ public class CookieJar implements ClientModInitializer {
             return;
         }
         Map<Identifier, byte[]> cookies = ((ClientCommonPacketListenerImplAccessor) listener).getServerCookies();
-        client.setScreen(new CookieScreen(client.screen, cookies));
+        client.gui.setScreen(new CookieScreen(client.gui.screen(), cookies));
     }
 
     public static @Nullable ClientCommonPacketListenerImpl getNetworkListener() {
@@ -91,7 +91,7 @@ public class CookieJar implements ClientModInitializer {
 
     public static void onStoreCookie(ClientboundStoreCookiePacket packet) {
         Minecraft client = Minecraft.getInstance();
-        if (client.screen instanceof CookieScreen cookieScreen) {
+        if (client.gui.screen() instanceof CookieScreen cookieScreen) {
             cookieScreen.onStoreCookie(packet.key());
         }
     }
@@ -99,7 +99,7 @@ public class CookieJar implements ClientModInitializer {
     public static boolean shouldIgnoreCookieStore() {
         return CookieJarConfig.ignoreCookieStores == CookieJarConfig.IgnoreCondition.ALWAYS ||
                 (CookieJarConfig.ignoreCookieStores == CookieJarConfig.IgnoreCondition.WHILE_SCREEN_OPEN &&
-                        Minecraft.getInstance().screen instanceof CookieScreen);
+                        Minecraft.getInstance().gui.screen() instanceof CookieScreen);
     }
 
     public static boolean shouldIgnoreTransfer(ClientboundTransferPacket packet) {
@@ -107,7 +107,7 @@ public class CookieJar implements ClientModInitializer {
             return false;
         }
         // Even if ignore transfers enabled, must let through packets created from transfer screen
-        if (Minecraft.getInstance().screen instanceof TransferScreen transferScreen) {
+        if (Minecraft.getInstance().gui.screen() instanceof TransferScreen transferScreen) {
             return !transferScreen.isSamePacket(packet);
         }
         return true;

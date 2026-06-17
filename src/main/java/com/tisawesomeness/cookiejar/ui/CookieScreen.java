@@ -129,7 +129,7 @@ public class CookieScreen extends Screen {
         });
 
         transferButton = Button.builder(Component.literal("➡"), button -> {
-                    minecraft.setScreen(new TransferScreen(this));
+                    minecraft.gui.setScreen(new TransferScreen(this));
                 })
                 .bounds(
                         width - (SCROLLER_WIDTH + (TEXTURE_SIZE + PADDING) * 2),
@@ -142,7 +142,7 @@ public class CookieScreen extends Screen {
         transferButton.active = allCookieActionsSupported;
 
         settingsButton = Button.builder(Component.literal("\uD83D\uDD27"), button -> {
-                    minecraft.setScreen(MidnightConfig.getScreen(this, "cookiejar"));
+                    minecraft.gui.setScreen(MidnightConfig.getScreen(this, "cookiejar"));
                 })
                 .bounds(
                         width - (SCROLLER_WIDTH + TEXTURE_SIZE + PADDING),
@@ -424,7 +424,7 @@ public class CookieScreen extends Screen {
 
     @Override
     public void onClose() {
-        minecraft.setScreen(parent);
+        minecraft.gui.setScreen(parent);
     }
 
     private class CookieListWidget extends ContainerObjectSelectionList<CookieListWidget.@NonNull Entry> {
