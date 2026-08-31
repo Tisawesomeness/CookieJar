@@ -314,7 +314,10 @@ public class CookieScreen extends Screen {
         dataTypeButton.setTooltip(type.tooltip);
         String input = type.toStringInput(payloadToAdd);
         payloadWidget.setMaxLength(type.getMaxLength(input));
+        payloadWidget.setResponder(null);
         payloadWidget.setValue(input);
+        payloadWidget.setResponder(payloadStr ->
+                setPayloadWidget(payloadWidget, payloadStr, payload -> payloadToAdd = payload));
         payloadWidget.setHint(type.getPayloadPlaceholder());
         cookieWidget.children().forEach(CookieListWidget.Entry::updatePayloadFromDataType);
     }
@@ -542,7 +545,9 @@ public class CookieScreen extends Screen {
                 String input = dataType.toStringInput(payload);
                 payloadWidget.moveCursorTo(0, false); // Prevent crash due to OOB selection
                 payloadWidget.setMaxLength(dataType.getMaxLength(input));
+                payloadWidget.setResponder(null); // Prevent UTF-8 round trip from corrupting binary payloads
                 payloadWidget.setValue(input);
+                payloadWidget.setResponder(this::editPayload);
             }
 
             private void deleteCookie() {
